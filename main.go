@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"pipeline/buffer"
 	"pipeline/pipeline"
@@ -67,15 +68,22 @@ func dataSource(ctx context.Context, ctxCancel context.CancelFunc, ch chan<- int
 
 // стадия, фильтрующая отрицательные числа
 func negativeFilterStage(ctx context.Context, inp <-chan int64) (out chan int64) {
+	lgr := log.New(os.Stdout, "negativeFilterStage", 0)
+	//lgrErr := log.New(os.Stderr, "negativeFilterStage", log.Ldate|log.Ltime|log.Llongfile)
+
 	out = make(chan int64)
 
 	go func() {
 		for {
 			select {
 			case data := <-inp:
+				lgr.Println("-> %d", data)
+
 				if data >= 0 {
 					select {
 					case out <- data:
+						lgr.Println("<- %d", data)
+
 					case <-ctx.Done():
 						return
 					}
@@ -91,14 +99,21 @@ func negativeFilterStage(ctx context.Context, inp <-chan int64) (out chan int64)
 
 // стадия, фильтрующая числа, не кратные 3
 func mult3FilterStage(ctx context.Context, inp <-chan int64) (out chan int64) {
+	lgr := log.New(os.Stdout, "mult3FilterStage", 0)
+	//lgrErr := log.New(os.Stderr, "mult3FilterStage", log.Ldate|log.Ltime|log.Llongfile)
+
 	out = make(chan int64)
 	go func() {
 		for {
 			select {
 			case data := <-inp:
+				lgr.Println("-> %d", data)
+
 				if data != 0 && data%3 == 0 {
 					select {
 					case out <- data:
+						lgr.Println("<- %d", data)
+
 					case <-ctx.Done():
 						return
 					}
@@ -113,6 +128,9 @@ func mult3FilterStage(ctx context.Context, inp <-chan int64) (out chan int64) {
 
 // стадия буферизации
 func bufferStage(ctx context.Context, inp <-chan int64) (out chan int64) {
+	lgr := log.New(os.Stdout, "bufferStage", 0)
+	//lgrErr := log.New(os.Stderr, "bufferStage", log.Ldate|log.Ltime|log.Llongfile)
+
 	out = make(chan int64)
 	buf := buffer.New(100)
 
@@ -120,7 +138,9 @@ func bufferStage(ctx context.Context, inp <-chan int64) (out chan int64) {
 		for {
 			select {
 			case data := <-inp:
+				lgr.Println("-> %d", data)
 				buf.Push(data)
+
 			case <-ctx.Done():
 				return
 			}
@@ -136,6 +156,8 @@ func bufferStage(ctx context.Context, inp <-chan int64) (out chan int64) {
 					for _, data := range bufferData {
 						select {
 						case out <- data:
+							lgr.Println("<- %d", data)
+
 						case <-ctx.Done():
 							return
 						}
